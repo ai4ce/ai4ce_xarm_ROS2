@@ -109,7 +109,8 @@ bool convertJoyToCmd(const std::vector<float>& axes, const std::vector<int>& but
 {
   // Give joint jogging priority because it is only buttons
   // If any joint jog command is requested, we are only publishing joint commands
-  if (buttons[CROSS] || buttons[CIRCLE] || buttons[SQUARE] || buttons[TRIANGLE] || axes[D_PAD_X] || axes[D_PAD_Y])
+  if (buttons[CROSS] || buttons[CIRCLE] || buttons[SQUARE] || buttons[TRIANGLE] || axes[D_PAD_X] || axes[D_PAD_Y] ||
+      buttons[LEFT_BUMPER] || buttons[RIGHT_BUMPER])
   {
     // Map the D_PAD to the proximal joints
     joint->joint_names.push_back("joint1");
@@ -117,11 +118,14 @@ bool convertJoyToCmd(const std::vector<float>& axes, const std::vector<int>& but
     joint->joint_names.push_back("joint2");
     joint->velocities.push_back(axes[D_PAD_Y]);
 
-    // Map the diamond to the distal joints
     joint->joint_names.push_back("joint4");
+    joint->velocities.push_back(buttons[LEFT_BUMPER] - buttons[RIGHT_BUMPER]);
+    
+    // Map the diamond to the distal joints
+    joint->joint_names.push_back("joint6");
     joint->velocities.push_back(buttons[CIRCLE] - buttons[TRIANGLE]);
     joint->joint_names.push_back("joint5");
-    joint->velocities.push_back(buttons[SQUARE] - buttons[CROSS]);
+    joint->velocities.push_back(buttons[CROSS] - buttons[SQUARE]);
     return false;
   }
 
@@ -136,9 +140,9 @@ bool convertJoyToCmd(const std::vector<float>& axes, const std::vector<int>& but
   twist->twist.angular.y = axes[LEFT_STICK_Y];
   twist->twist.angular.x = axes[LEFT_STICK_X];
 
-  double roll_positive = buttons[RIGHT_BUMPER];
-  double roll_negative = -1 * (buttons[LEFT_BUMPER]);
-  twist->twist.angular.z = roll_positive + roll_negative;
+  // double roll_positive = buttons[RIGHT_BUMPER];
+  // double roll_negative = -1 * (buttons[LEFT_BUMPER]);
+  // twist->twist.angular.z = roll_positive + roll_negative;
 
   return true;
 }
