@@ -60,9 +60,9 @@ const std::string TWIST_TOPIC = "/servo_server/delta_twist_cmds";
 const std::string JOINT_TOPIC = "/servo_server/delta_joint_cmds";
 const std::string EEF_FRAME_ID = "link_eef";
 const std::string BASE_FRAME_ID = "link_base";
-
+const float SPEED_MULTIPLIER = 0.1;
 // Enums for button names -> axis/button array index
-// For XBOX 1 controller
+// For PS controller
 enum Axis
 {
   LEFT_STICK_X = 0,
@@ -82,11 +82,11 @@ enum Button
   SQUARE = 3,
   LEFT_BUMPER = 4,
   RIGHT_BUMPER = 5,
-  CHANGE_VIEW = 6,
-  MENU = 7,
-  HOME = 8,
-  LEFT_STICK_CLICK = 9,
-  RIGHT_STICK_CLICK = 10
+  MENU = 9,
+  CAPTURE = 8,
+  HOME = 10,
+  LEFT_STICK_CLICK = 11,
+  RIGHT_STICK_CLICK = 12
 };
 
 // Some axes have offsets (e.g. the default trigger position is 1.0 not 0)
@@ -110,22 +110,26 @@ bool convertJoyToCmd(const std::vector<float>& axes, const std::vector<int>& but
   // Give joint jogging priority because it is only buttons
   // If any joint jog command is requested, we are only publishing joint commands
   if (buttons[CROSS] || buttons[CIRCLE] || buttons[SQUARE] || buttons[TRIANGLE] || axes[D_PAD_X] || axes[D_PAD_Y] ||
-      buttons[LEFT_BUMPER] || buttons[RIGHT_BUMPER])
+      buttons[LEFT_BUMPER] || buttons[RIGHT_BUMPER] || buttons[LEFT_STICK_CLICK] || buttons[RIGHT_STICK_CLICK])
   {
-    // Map the D_PAD to the proximal joints
     joint->joint_names.push_back("joint1");
-    joint->velocities.push_back(axes[D_PAD_X]);
+    joint->velocities.push_back(axes[D_PAD_X]*SPEED_MULTIPLIER);
+
     joint->joint_names.push_back("joint2");
-    joint->velocities.push_back(axes[D_PAD_Y]);
+    joint->velocities.push_back(axes[D_PAD_Y]*SPEED_MULTIPLIER);
+
+    joint->joint_names.push_back("joint3");
+    joint->velocities.push_back((buttons[LEFT_STICK_CLICK] - buttons[RIGHT_STICK_CLICK])*SPEED_MULTIPLIER);
 
     joint->joint_names.push_back("joint4");
-    joint->velocities.push_back(buttons[LEFT_BUMPER] - buttons[RIGHT_BUMPER]);
+    joint->velocities.push_back((buttons[LEFT_BUMPER] - buttons[RIGHT_BUMPER])*SPEED_MULTIPLIER);
     
-    // Map the diamond to the distal joints
-    joint->joint_names.push_back("joint6");
-    joint->velocities.push_back(buttons[CIRCLE] - buttons[TRIANGLE]);
     joint->joint_names.push_back("joint5");
-    joint->velocities.push_back(buttons[CROSS] - buttons[SQUARE]);
+    joint->velocities.push_back((buttons[CROSS] - buttons[SQUARE])*SPEED_MULTIPLIER);
+
+    joint->joint_names.push_back("joint6");
+    joint->velocities.push_back((buttons[TRIANGLE] - buttons[CIRCLE])*SPEED_MULTIPLIER);
+
     return false;
   }
 
@@ -153,9 +157,9 @@ bool convertJoyToCmd(const std::vector<float>& axes, const std::vector<int>& but
  */
 void updateCmdFrame(std::string& frame_name, const std::vector<int>& buttons)
 {
-  if (buttons[CHANGE_VIEW] && frame_name == EEF_FRAME_ID)
+  if (buttons[HOME] && frame_name == EEF_FRAME_ID)
     frame_name = BASE_FRAME_ID;
-  else if (buttons[MENU] && frame_name == BASE_FRAME_ID)
+  else if (buttons[HOME] && frame_name == BASE_FRAME_ID)
     frame_name = EEF_FRAME_ID;
 }
 
