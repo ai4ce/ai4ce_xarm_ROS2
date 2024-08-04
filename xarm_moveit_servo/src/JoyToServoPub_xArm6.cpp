@@ -60,7 +60,6 @@ const std::string TWIST_TOPIC = "/servo_server/delta_twist_cmds";
 const std::string JOINT_TOPIC = "/servo_server/delta_joint_cmds";
 const std::string EEF_FRAME_ID = "link_eef";
 const std::string BASE_FRAME_ID = "link_base";
-const float SPEED_MULTIPLIER = 0.1;
 // Enums for button names -> axis/button array index
 // For PS controller
 enum Axis
@@ -103,9 +102,11 @@ std::map<Button, double> BUTTON_DEFAULTS;
  * @param joint A JointJog message to update in prep for publishing
  * @return return true if you want to publish a Twist, false if you want to publish a JointJog
  */
-bool convertJoyToCmd(const std::vector<float>& axes, const std::vector<int>& buttons,
+bool convertJoyToCmd(const std::vector<float>& axes, 
+                     const std::vector<int>& buttons,
                      std::unique_ptr<geometry_msgs::msg::TwistStamped>& twist,
-                     std::unique_ptr<control_msgs::msg::JointJog>& joint)
+                     std::unique_ptr<control_msgs::msg::JointJog>& joint,
+                     float SPEED_MULTIPLIER = 1.0)
 {
   // Give joint jogging priority because it is only buttons
   // If any joint jog command is requested, we are only publishing joint commands
@@ -171,6 +172,9 @@ public:
   JoyToServoPub(const rclcpp::NodeOptions& options)
     : Node("joy_to_twist_publisher", options), frame_to_publish_(BASE_FRAME_ID)
   {
+    // setup parameters
+    this->declare_parameter("speed", 1.0);
+    SPEED_MULTIPLIER = this->get_parameter("speed").as_double();
     // Setup pub/sub
     joy_sub_ = this->create_subscription<sensor_msgs::msg::Joy>(
         JOY_TOPIC, rclcpp::SystemDefaultsQoS(),
@@ -244,7 +248,7 @@ public:
     updateCmdFrame(frame_to_publish_, msg->buttons);
 
     // Convert the joystick message to Twist or JointJog and publish
-    if (convertJoyToCmd(msg->axes, msg->buttons, twist_msg, joint_msg))
+    if (convertJoyToCmd(msg->axes, msg->buttons, twist_msg, joint_msg, SPEED_MULTIPLIER))
     {
       // publish the TwistStamped
       twist_msg->header.frame_id = frame_to_publish_;
@@ -270,6 +274,7 @@ private:
   std::string frame_to_publish_;
 
   std::thread collision_pub_thread_;
+  float SPEED_MULTIPLIER;
 };  // class JoyToServoPub
 
 }  // namespace moveit_servo

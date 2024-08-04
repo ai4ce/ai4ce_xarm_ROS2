@@ -39,6 +39,7 @@ def launch_setup(context, *args, **kwargs):
     # 2: xbox360 wireless
     # 3: spacemouse wireless
     joystick_type = LaunchConfiguration('joystick_type', default=1)
+    speed_multiplier = LaunchConfiguration('speed', default=1)
 
     add_realsense_d435i = LaunchConfiguration('add_realsense_d435i', default=False)
     add_d435i_links = LaunchConfiguration('add_d435i_links', default=False)
@@ -238,9 +239,7 @@ def launch_setup(context, *args, **kwargs):
                 parameters=[
                     servo_params,
                     {
-                        'dof': dof, 
-                        'ros_queue_size': 10,
-                        'joystick_type': joystick_type,
+                        'speed': speed_multiplier,
                     },
                 ],
                 # extra_arguments=[{'use_intra_process_comms': True}],
