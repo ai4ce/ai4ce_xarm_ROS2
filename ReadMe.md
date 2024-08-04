@@ -12,3 +12,7 @@ Here, I will just record some major modifications
 - Successfully implement joint-space and twist teleoperation.
     - add `JoyToServoPub_xArm6.cpp` to `xarm_moveit_servo/src`
     - modified relevant launch file and CMakeLists.txt.
+    - all 6 joints can be controlled now. see the code for specific configuration.
+    - home button to switch the twist control frame from base to EEF
+
+- Add speed multiplier as a launch parameter to the teleoperation system.
