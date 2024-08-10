@@ -1,5 +1,7 @@
 This is directly modified from [UFACTORY's official xArm documentation](https://github.com/xArm-Developer/xarm_ros2/tree/humble)
 
+To use these packages, please first follow the official installation for the original ROS2 driver, and then replace the official folder of the same name using the folders here. Note that each folder inside this repo is an independent ROS2 package.
+
 Here, I will just record some major modifications
 
 ## URDF/Visualization

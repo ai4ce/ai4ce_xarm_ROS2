@@ -206,8 +206,10 @@ public:
     if (msg->buttons[HOME] == 1 && debounce_buffer_old == 0)
     {
       updateCmdFrame(frame_to_publish_);
+      RCLCPP_WARN(this->get_logger(), "Changing twist command frame to %s", frame_to_publish_.c_str());
     }
     debounce_buffer.pop();
+
 
     // Convert the joystick message to Twist or JointJog and publish
     if (convertJoyToCmd(msg->axes, msg->buttons, twist_msg, joint_msg, SPEED_MULTIPLIER))
@@ -230,13 +232,12 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
   rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr twist_pub_;
   rclcpp::Publisher<control_msgs::msg::JointJog>::SharedPtr joint_pub_;
-  // rclcpp::Publisher<moveit_msgs::msg::PlanningScene>::SharedPtr collision_pub_;
   rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr servo_start_client_;
 
   std::string frame_to_publish_;
 
-  std::thread collision_pub_thread_;
   float SPEED_MULTIPLIER;
+
   std::queue<int> debounce_buffer;
   int debounce_buffer_old = 0;
 };  // class JoyToServoPub
