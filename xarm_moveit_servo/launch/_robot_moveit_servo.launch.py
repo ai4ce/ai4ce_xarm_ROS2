@@ -39,7 +39,7 @@ def launch_setup(context, *args, **kwargs):
     # 2: xbox360 wireless
     # 3: spacemouse wireless
     joystick_type = LaunchConfiguration('joystick_type', default=1)
-    speed_multiplier = LaunchConfiguration('speed', default=1)
+    speed_multiplier = LaunchConfiguration('speed', default=1.0)
 
     add_realsense_d435i = LaunchConfiguration('add_realsense_d435i', default=False)
     add_d435i_links = LaunchConfiguration('add_d435i_links', default=False)
