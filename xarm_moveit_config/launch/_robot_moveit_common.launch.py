@@ -70,6 +70,10 @@ def launch_setup(context, *args, **kwargs):
     add_d435i_links = LaunchConfiguration('add_d435i_links', default=True)
     model1300 = LaunchConfiguration('model1300', default=False)
 
+    # AI4CE modifications
+    add_gelsight_realsense_d405 = LaunchConfiguration('add_gelsight_realsense_d405', default=True)
+    add_d405_links = LaunchConfiguration('add_d405_links', default=False)
+
     attach_to = LaunchConfiguration('attach_to', default='world')
     attach_xyz = LaunchConfiguration('attach_xyz', default='"0 0 0"')
     attach_rpy = LaunchConfiguration('attach_rpy', default='"0 0 0"')
@@ -115,6 +119,8 @@ def launch_setup(context, *args, **kwargs):
             'ros2_control_plugin': ros2_control_plugin,
             'add_realsense_d435i': add_realsense_d435i,
             'add_d435i_links': add_d435i_links,
+            'add_gelsight_realsense_d405': add_gelsight_realsense_d405,
+            'add_d405_links': add_d405_links,
             'model1300': model1300,
             'attach_to': attach_to,
             'attach_xyz': attach_xyz,
@@ -195,7 +201,7 @@ def launch_setup(context, *args, **kwargs):
 
     # Planning Configuration
     planning_pipeline_config = {
-        'default_planning_pipeline': 'ompl',
+        'default_planning_pipeline': 'pilz_industrial_motion_planner',
         'planning_pipelines': ['ompl', 'pilz_industrial_motion_planner'],
     }
     if os.environ.get('ROS_DISTRO', '') > 'iron':
