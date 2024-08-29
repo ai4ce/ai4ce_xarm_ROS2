@@ -22,7 +22,7 @@
   <xacro:arg name="add_realsense_d435i" default="false"/>
   <xacro:arg name="add_d435i_links" default="true"/>
   <xacro:arg name="add_gelsight_realsense_d405" default="false"/>
-  <xacro:arg name="add_d405_links" default="true"/>
+  <xacro:arg name="add_d405_links" default="false"/>
   <xacro:arg name="use_gazebo_camera" default="false"/>
 
   <xacro:arg name="add_other_geometry" default="false"/>

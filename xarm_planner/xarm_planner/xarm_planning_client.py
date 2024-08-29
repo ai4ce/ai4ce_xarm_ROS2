@@ -118,7 +118,7 @@ class XArmPlanningClient:
         # clear all collision left from previous runs
         clear_collision_future = self.moveit2.clear_all_collision_objects()
         
-        while not clear_collision_future.done(): # wait for the clear to finish
+        while not clear_collision_future.done(): # type: ignore
             time.sleep(0.1)
         
         for obstacle in obstacles:

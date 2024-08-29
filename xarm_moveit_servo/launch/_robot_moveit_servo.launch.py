@@ -44,8 +44,8 @@ def launch_setup(context, *args, **kwargs):
     add_realsense_d435i = LaunchConfiguration('add_realsense_d435i', default=False)
     add_d435i_links = LaunchConfiguration('add_d435i_links', default=False)
 
-    add_gelsight_realsense_d405 = LaunchConfiguration('add_gelsight_realsense_d405', default=False)
-    add_d405_links = LaunchConfiguration('add_d405_links', default=True)
+    add_gelsight_realsense_d405 = LaunchConfiguration('add_gelsight_realsense_d405', default=True)
+    add_d405_links = LaunchConfiguration('add_d405_links', default=False)
 
     model1300 = LaunchConfiguration('model1300', default=False)
 

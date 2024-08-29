@@ -21,7 +21,7 @@
     add_realsense_d435i:=false
     add_d435i_links:=false
     add_gelsight_realsense_d405:=false
-    add_d405_links:=true
+    add_d405_links:=false
     use_gazebo_camera:=false
     add_other_geometry:=false 
     geometry_type:='box'
