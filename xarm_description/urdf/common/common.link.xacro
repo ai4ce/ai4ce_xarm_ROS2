@@ -41,11 +41,11 @@
     </visual>
   </xacro:macro>
   
-  <xacro:macro name="common_link_collision" params="mesh_filename add_mesh_suffix:=true origin_xyz:='0 0 0' origin_rpy:='0 0 0'">
+  <xacro:macro name="common_link_collision" params="mesh_filename add_mesh_suffix:=true origin_xyz:='0 0 0' origin_rpy:='0 0 0' mesh_scale:='1 1 1'">
     <collision>
       <geometry>
         <xacro:if value="${add_mesh_suffix}">
-          <mesh filename="${mesh_path}/${mesh_filename}.${mesh_suffix}"/>
+          <mesh filename="${mesh_path}/${mesh_filename}.${mesh_suffix}" scale="${mesh_scale}"/>
         </xacro:if>
         <xacro:unless value="${add_mesh_suffix}">
           <mesh filename="${mesh_path}/${mesh_filename}"/>

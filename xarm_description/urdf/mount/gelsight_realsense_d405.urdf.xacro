@@ -12,10 +12,11 @@
         origin_xyz="0 0 0" 
         origin_rpy="${M_PI/2} 0 0"
         material_name="${prefix}Silver" />
-      <!-- <xacro:common_link_collision 
-        mesh_filename="camera/realsense/collision/d435_with_cam_stand"  
+      <xacro:common_link_collision 
+        mesh_filename="mount/collision/gelsight_realsense_d405"
+        mesh_scale="0.001 0.001 0.001"
         origin_xyz="0 0 0" 
-        origin_rpy="0 0 0" /> -->
+        origin_rpy="${M_PI/2} 0 0" />
     </link>
 
     <xacro:if value="${add_d405_links}">
