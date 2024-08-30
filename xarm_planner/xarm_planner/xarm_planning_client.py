@@ -126,6 +126,10 @@ class XArmPlanningClient:
                 self.moveit2.add_collision_sphere(
                     id=obstacle['id'], position=obstacle['position'], radius=obstacle['radius']
                 )
+            if obstacle['type'] == 'box':
+                self.moveit2.add_collision_box(
+                    id=obstacle['id'], position=obstacle['position'], quat_xyzw=obstacle['quat_xyzw'], size=obstacle['size']
+                )
         # moveit2.add_collision_box(
         #     id='table', position=(-1, 0.0, 0.2), quat_xyzw=(0.0, 0.0, 0.0, 1.0), size=(0.5, 1, 0.5)
         # )

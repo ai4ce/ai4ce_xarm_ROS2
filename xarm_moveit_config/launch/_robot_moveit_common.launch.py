@@ -67,7 +67,7 @@ def launch_setup(context, *args, **kwargs):
     moveit_controller_manager_value = LaunchConfiguration('moveit_controller_manager_value', default='moveit_fake_controller_manager/MoveItFakeControllerManager')
 
     add_realsense_d435i = LaunchConfiguration('add_realsense_d435i', default=False)
-    add_d435i_links = LaunchConfiguration('add_d435i_links', default=True)
+    add_d435i_links = LaunchConfiguration('add_d435i_links', default=False)
     model1300 = LaunchConfiguration('model1300', default=False)
 
     # AI4CE modifications
