@@ -5,12 +5,13 @@ from rclpy.node import Node
 from xarm_planner.xarm_planning_client import XArmPlanningClient
 from geometry_msgs.msg import PoseArray
 
+OBJECT_HEIGHT = 0.345
 
 def get_obstacles():
     obstacles = [{}]
     obstacles[0]['type'] = 'sphere'
     obstacles[0]['id'] = 'object'
-    obstacles[0]['position'] = (0.43887, -0.0834, 0.395)
+    obstacles[0]['position'] = (0.43887, -0.0834, OBJECT_HEIGHT)
     obstacles[0]['radius'] = 0.10
     
     obstacles.append({})
@@ -42,8 +43,8 @@ def main():
         
     # gripper_client = URRobotiqClient()
     planning_client = XArmPlanningClient(cartesian_planning=False,
-                                         pipeline_id="pilz_industrial_motion_planner",
-                                         planner_id="PTP")
+                                         pipeline_id="ompl",
+                                         planner_id="TRRT",)
     
 
     obstacles = get_obstacles()
@@ -51,7 +52,7 @@ def main():
 
 
     waypoints = planning_client.surround_and_lock(
-        center=[0.43887, -0.0834, 0.395],
+        center=[0.43887, -0.0834, OBJECT_HEIGHT],
         num_waypoints=30,)
     
     pose_array = PoseArray()
