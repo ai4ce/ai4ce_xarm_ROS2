@@ -4,6 +4,7 @@ import time
 from threading import Thread
 import numpy as np
 import math
+from typing import Any, List, Optional, Tuple, Union
 
 from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup
@@ -15,6 +16,10 @@ from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 from scipy.spatial.transform import Rotation
 from geometry_msgs.msg import Pose
+from trajectory_msgs.msg import JointTrajectory
+from moveit_msgs.msg import DisplayTrajectory
+from sensor_msgs.msg import JointState
+
 
 from pymoveit2 import MoveIt2
 
@@ -41,8 +46,9 @@ class XArmPlanningClient:
         self.executor = MultiThreadedExecutor(2)
         self.executor.add_node(self.node)
         self.executor_thread = Thread(target=self.executor.spin, daemon=True, args=())
-
-        ################################## MoveIt Setup 1 ######################################
+        
+        self.joint_state = JointState()
+        ################################## MoveIt Setup ######################################
         self.moveit2 = MoveIt2(
             node=self.node,
             joint_names=['joint_1', 
@@ -88,6 +94,17 @@ class XArmPlanningClient:
         # listener. Important to spin a thread, otherwise the listen will block and no TF can be updated
         self.tf_listener = TransformListener(buffer=self.tf_buffer, node=self.node, spin_thread=False)
 
+        ############################# Publisher Setup ##################################
+        self.planned_path_publisher = self.node.create_publisher(msg_type=DisplayTrajectory, 
+                                                                 topic="/display_planned_path", 
+                                                                 qos_profile=1)
+        
+        ############################# Subscriber Setup ##################################
+        self.start_state_subscriber = self.node.create_subscription(msg_type=JointState, 
+                                                                    topic="/joint_states", 
+                                                                    callback=self._start_state_callback, 
+                                                                    qos_profile=1)
+
     def move_to_pose(self, pose):
         self.moveit2.move_to_pose(
             pose=pose,
@@ -96,6 +113,28 @@ class XArmPlanningClient:
         if self.synch:
             self.moveit2.wait_until_executed()
     
+    def plan_to_pose(self, pose) -> Optional[JointTrajectory]:
+        display_traj = DisplayTrajectory()
+        display_traj.trajectory_start.joint_state = self.joint_state
+
+        if self.moveit2.pipeline_id == 'pilz_industrial_motion_planner':
+            frame_id = 'world'
+        else:
+            frame_id = None
+        planned_traj = self.moveit2.plan(pose=pose, cartesian=self.cartesian_planning, frame_id=frame_id)
+
+        if planned_traj is None:
+            return None
+        
+        # display_traj.trajectory.append(planned_traj)
+        # self.planned_path_publisher.publish(display_traj)
+        return planned_traj
+    
+    def execute_plan(self, plan: JointTrajectory):
+        self.moveit2.execute(plan)
+        if self.synch:
+            self.moveit2.wait_until_executed()
+
     def get_current_pose(self) -> Pose:
         '''
         Get the current pose of the robot
@@ -165,11 +204,11 @@ class XArmPlanningClient:
                                                             current_pose.orientation.z, 
                                                             current_pose.orientation.w])
         self._compute_initial_angle(center) # Compute the initial angle between the current position and the object's center
-        self.moveit2.set_path_orientation_constraint(
-            quat_xyzw=current_pose.orientation,
-            tolerance= (3.14159, 1.0, 3.14159),
-            parameterization=0,
-        )
+        # self.moveit2.set_path_orientation_constraint(
+        #     quat_xyzw=current_pose.orientation,
+        #     tolerance= (3.14159, 1.0, 3.14159),
+        #     parameterization=0,
+        # )
         waypoints = []
         for i in range(1, num_waypoints):
             angle = 2 * math.pi * i / num_waypoints
@@ -177,11 +216,43 @@ class XArmPlanningClient:
             waypoints.append(pose)
 
         return waypoints
+    
+    def _start_state_callback(self, msg):
+        self.joint_state = msg
 
-    def _normalize(self, v):
-        """ Normalize a vector """
-        return v / np.linalg.norm(v)
+    def _compute_pose_on_circle(self, center, angle):
+        """
+        Compute a pose on a circular path at a given angle.
+        center: 3D position of the center of the circle (the object)
+        angle: Angle around the circle (radians)
+        height: Constant height for the end-effector
+        """
+        total_angle = self._circular_path_angle_offset + angle
+        radius = np.linalg.norm(self._circular_path_initial_position - center)
         
+        # Calculate the position on the circle
+        x = center[0] + radius * math.cos(total_angle)
+        y = center[1] + radius * math.sin(total_angle)
+        z = self._circular_path_initial_position[2]
+
+        # Camera's current position
+        camera_position = np.array([x, y, z])
+
+        # Compute the orientation that points toward the center
+        orientation = self._gaze_at(center, camera_position)
+
+        # Create a Pose object
+        pose = Pose()
+        pose.position.x = x
+        pose.position.y = y
+        pose.position.z = z
+        pose.orientation.x = orientation[0]
+        pose.orientation.y = orientation[1]
+        pose.orientation.z = orientation[2]
+        pose.orientation.w = orientation[3]
+
+        return pose
+
     def _gaze_at(self, center_point, ideal_camera_position, initial_y=np.array([0, 1, 0])):
         """
         Calculate the quaternion that rotates the camera to look at the center point.
@@ -231,40 +302,10 @@ class XArmPlanningClient:
         # Calculate the angle in the XY plane
         self._circular_path_angle_offset = math.atan2(delta_y, delta_x)
         
-    
-    def _compute_pose_on_circle(self, center, angle):
-        """
-        Compute a pose on a circular path at a given angle.
-        center: 3D position of the center of the circle (the object)
-        angle: Angle around the circle (radians)
-        height: Constant height for the end-effector
-        """
-        total_angle = self._circular_path_angle_offset + angle
-        radius = np.linalg.norm(self._circular_path_initial_position - center)
+    def _normalize(self, v):
+        """ Normalize a vector """
+        return v / np.linalg.norm(v)
         
-        # Calculate the position on the circle
-        x = center[0] + radius * math.cos(total_angle)
-        y = center[1] + radius * math.sin(total_angle)
-        z = self._circular_path_initial_position[2]
-
-        # Camera's current position
-        camera_position = np.array([x, y, z])
-
-        # Compute the orientation that points toward the center
-        orientation = self._gaze_at(center, camera_position)
-
-        # Create a Pose object
-        pose = Pose()
-        pose.position.x = x
-        pose.position.y = y
-        pose.position.z = z
-        pose.orientation.x = orientation[0]
-        pose.orientation.y = orientation[1]
-        pose.orientation.z = orientation[2]
-        pose.orientation.w = orientation[3]
-
-        return pose
-    
     def _align_y_axes_quaternions(self, q1):
         """
         Rotates quaternion q1 around the z-axis so that its y-axis is most aligned

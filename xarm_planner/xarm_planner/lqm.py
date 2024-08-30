@@ -1,16 +1,10 @@
 #!/usr/bin/env python3
 
-from webbrowser import get
 import rclpy
 from rclpy.node import Node
-from rclpy.callback_groups import ReentrantCallbackGroup
 from xarm_planner.xarm_planning_client import XArmPlanningClient
-from geometry_msgs.msg import Pose, PoseArray
-from geometry_msgs.msg import Transform
-import cv2
+from geometry_msgs.msg import PoseArray
 
-
-import time
 
 def get_obstacles():
     obstacles = [{}]
@@ -34,8 +28,6 @@ def get_obstacles():
     obstacles[2]['size'] = (1, 0.02, 1)
     return obstacles
   
-
- 
 
 def main():
 
@@ -68,14 +60,19 @@ def main():
 
     visual_publisher.publish(pose_array)
 
-    # # if I hit esc, stop the program
 
-    # # print(waypoints)
-
-    # for waypoint in waypoints:
-    #     planning_client.move_to_pose(waypoint)
-    #     # only proceed the for loop if I press enter. Use input() to wait for user input
-    #     a = input()
+    for waypoint in waypoints:
+        traj = planning_client.plan_to_pose(waypoint)
+        if traj is not None:
+            judge = input()
+            if judge == '':
+                planning_client.execute_plan(traj)
+            else:
+                print("Skip this waypoint")
+        else:
+            print("Failed to plan to waypoint")
+        # only proceed the for loop if I press enter. Use input() to wait for user input
+        a = input()
 
         
 
