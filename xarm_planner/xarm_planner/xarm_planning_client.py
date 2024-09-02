@@ -15,10 +15,9 @@ from rclpy.duration import Duration
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 from scipy.spatial.transform import Rotation
+
 from geometry_msgs.msg import Pose
 from trajectory_msgs.msg import JointTrajectory
-from moveit_msgs.msg import DisplayTrajectory
-from sensor_msgs.msg import JointState
 
 
 from pymoveit2 import MoveIt2
@@ -47,7 +46,6 @@ class XArmPlanningClient:
         self.executor.add_node(self.node)
         self.executor_thread = Thread(target=self.executor.spin, daemon=True, args=())
         
-        self.joint_state = JointState()
         ################################## MoveIt Setup ######################################
         self.moveit2 = MoveIt2(
             node=self.node,
@@ -95,15 +93,9 @@ class XArmPlanningClient:
         self.tf_listener = TransformListener(buffer=self.tf_buffer, node=self.node, spin_thread=False)
 
         ############################# Publisher Setup ##################################
-        self.planned_path_publisher = self.node.create_publisher(msg_type=DisplayTrajectory, 
-                                                                 topic="/display_planned_path", 
-                                                                 qos_profile=1)
+
         
         ############################# Subscriber Setup ##################################
-        self.start_state_subscriber = self.node.create_subscription(msg_type=JointState, 
-                                                                    topic="/joint_states", 
-                                                                    callback=self._start_state_callback, 
-                                                                    qos_profile=1)
 
     def move_to_pose(self, pose):
         self.moveit2.move_to_pose(
@@ -114,20 +106,12 @@ class XArmPlanningClient:
             self.moveit2.wait_until_executed()
     
     def plan_to_pose(self, pose) -> Optional[JointTrajectory]:
-        display_traj = DisplayTrajectory()
-        display_traj.trajectory_start.joint_state = self.joint_state
-
         if self.moveit2.pipeline_id == 'pilz_industrial_motion_planner':
-            frame_id = 'world'
+            frame_id = 'world' # a bug in pilz_industrial_motion_planner requires a frame_id to be set
         else:
             frame_id = None
         planned_traj = self.moveit2.plan(pose=pose, cartesian=self.cartesian_planning, frame_id=frame_id)
-
-        if planned_traj is None:
-            return None
         
-        # display_traj.trajectory.append(planned_traj)
-        # self.planned_path_publisher.publish(display_traj)
         return planned_traj
     
     def execute_plan(self, plan: JointTrajectory):
