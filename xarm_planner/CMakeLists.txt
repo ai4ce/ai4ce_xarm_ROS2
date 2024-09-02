@@ -172,7 +172,7 @@ install(DIRECTORY
 
 install(PROGRAMS
   xarm_planner/xarm_planning_client.py
-  xarm_planner/lqm.py
+  xarm_planner/lmq.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

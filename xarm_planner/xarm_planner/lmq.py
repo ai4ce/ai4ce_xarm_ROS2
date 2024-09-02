@@ -53,7 +53,7 @@ def main():
 
     waypoints = planning_client.surround_and_lock(
         center=[0.43887, -0.0834, OBJECT_HEIGHT],
-        num_waypoints=30,)
+        num_waypoints=8,)
     
     pose_array = PoseArray()
     pose_array.header.frame_id = "link_base"
@@ -61,6 +61,7 @@ def main():
 
     visual_publisher.publish(pose_array)
 
+    print(planning_client.camera_link)
 
     for waypoint in waypoints:
         traj = planning_client.plan_to_pose(waypoint)

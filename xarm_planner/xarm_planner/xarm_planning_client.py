@@ -11,6 +11,7 @@ from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.time import Time
 from rclpy.duration import Duration
+from rclpy.qos import QoSProfile, DurabilityPolicy, HistoryPolicy
 
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
@@ -18,13 +19,17 @@ from scipy.spatial.transform import Rotation
 
 from geometry_msgs.msg import Pose
 from trajectory_msgs.msg import JointTrajectory
+from tf2_msgs.msg import TFMessage
 
 
 from pymoveit2 import MoveIt2
 
 
 class XArmPlanningClient:
-    def __init__(self, cartesian_planning=False, pipeline_id = '', planner_id="RRTConnectkConfigDefault"):
+    def __init__(self, 
+                 cartesian_planning=False, 
+                 pipeline_id = '', 
+                 planner_id="RRTConnectkConfigDefault"):
         '''
         cartesian_planning: If True, use MoveIt's cartesian planning. If False, use joint space planning
         pipeline_id: ID of the pipeline to use for planning. ['ompl', 'pilz_industrial_motion_planner']. If empty, use the default pipeline
@@ -92,6 +97,16 @@ class XArmPlanningClient:
         # listener. Important to spin a thread, otherwise the listen will block and no TF can be updated
         self.tf_listener = TransformListener(buffer=self.tf_buffer, node=self.node, spin_thread=False)
 
+        self.camera_link = ''
+        counter = 0
+        while self.camera_link == '':
+            if counter <= 10000:
+                self._init_camera_link()
+                counter += 1
+            else:
+                self.node.get_logger().warn("Failed to get the camera link name. Use EEF link instead")
+                self.camera_link = 'link_eef'
+        
         ############################# Publisher Setup ##################################
 
         
@@ -119,11 +134,14 @@ class XArmPlanningClient:
         if self.synch:
             self.moveit2.wait_until_executed()
 
-    def get_current_pose(self) -> Pose:
+    def get_current_pose(self, frame) -> Pose:
         '''
-        Get the current pose of the robot
+        Get the current pose of a selected frame
         '''
-        current_transform_stamp = self.tf_buffer.lookup_transform(self.moveit2.base_link_name, self.moveit2.end_effector_name, Time(), Duration(seconds=2))
+        current_transform_stamp = self.tf_buffer.lookup_transform(target_frame=self.moveit2.base_link_name, 
+                                                                  source_frame=frame, 
+                                                                  time=Time(), 
+                                                                  timeout=Duration(seconds=2))
         current_transform = current_transform_stamp.transform
 
         current_pose = Pose()
@@ -179,7 +197,7 @@ class XArmPlanningClient:
         '''
 
         # Generate waypoints on the circular path
-        current_pose = self.get_current_pose()
+        current_pose = self.get_current_pose(self.camera_link)
         self._circular_path_initial_position = np.array([current_pose.position.x, 
                                                          current_pose.position.y, 
                                                          current_pose.position.z])
@@ -202,9 +220,6 @@ class XArmPlanningClient:
 
         return waypoints
     
-    def _start_state_callback(self, msg):
-        self.joint_state = msg
-
     def _compute_pose_on_circle(self, center, angle):
         """
         Compute a pose on a circular path at a given angle.
@@ -225,6 +240,9 @@ class XArmPlanningClient:
 
         # Compute the orientation that points toward the center
         orientation = self._gaze_at(center, camera_position)
+
+        # rotate the orientation by 180 degrees around the z-axis
+        # orientation =  Rotation.from_euler('Y', angle).as_quat()*orientation
 
         # Create a Pose object
         pose = Pose()
@@ -325,3 +343,30 @@ class XArmPlanningClient:
         new_q1 = (Rotation.from_quat(q1)*Rotation.from_quat(yaw_rotation)).as_quat()
 
         return new_q1
+    
+    def _init_camera_link(self):
+        '''
+        Get the name of the camera link
+        '''
+        static_qos = QoSProfile(
+                depth=1,
+                durability=DurabilityPolicy.TRANSIENT_LOCAL,
+                history=HistoryPolicy.KEEP_LAST,
+                )
+        self._tf_sub = self.node.create_subscription(
+            msg_type=TFMessage,
+            topic='/tf_static',
+            callback=self._tf_callback,
+            qos_profile=static_qos,
+        )
+
+    
+    def _tf_callback(self, msg):
+        '''
+        Callback function for the TF message
+        '''
+        for transform in msg.transforms:
+            if transform.header.frame_id == 'link_eef':
+                self.camera_link = transform.child_frame_id
+                self.node.destroy_subscription(self._tf_sub)
+                # destroy the subscription after getting the camera link name to save resources
