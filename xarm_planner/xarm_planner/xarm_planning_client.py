@@ -215,12 +215,12 @@ class XArmPlanningClient:
         waypoints = []
         for i in range(1, num_waypoints):
             angle = 2 * math.pi * i / num_waypoints
-            pose = self._compute_pose_on_circle(center, angle)
+            pose = self._compute_pose_on_circle(center, angle, i/num_waypoints)
             waypoints.append(pose)
 
         return waypoints
     
-    def _compute_pose_on_circle(self, center, angle):
+    def _compute_pose_on_circle(self, center, angle, i):
         """
         Compute a pose on a circular path at a given angle.
         center: 3D position of the center of the circle (the object)
@@ -239,10 +239,18 @@ class XArmPlanningClient:
         camera_position = np.array([x, y, z])
 
         # Compute the orientation that points toward the center
-        orientation = self._gaze_at(center, camera_position)
+        rotation = self._gaze_at(center, camera_position)
 
         # rotate the orientation by 180 degrees around the z-axis
-        # orientation =  Rotation.from_euler('Y', angle).as_quat()*orientation
+        # to make the camera point towards the object
+        # print(orientation)
+        print('angle:', angle)
+        print('offset:',-(math.pi/2)*np.cos(angle))
+        if angle <= math.pi:
+            offset = Rotation.from_euler('z', -(math.pi/2)*np.cos(angle))
+        else:
+            offset = Rotation.from_euler('z', (math.pi/2)*np.cos(angle)+(math.pi))
+        orientation = (rotation*offset).as_quat()
 
         # Create a Pose object
         pose = Pose()
@@ -256,7 +264,7 @@ class XArmPlanningClient:
 
         return pose
 
-    def _gaze_at(self, center_point, ideal_camera_position, initial_y=np.array([0, 1, 0])):
+    def _gaze_at(self, center_point, ideal_camera_position, initial_y=np.array([0, 1, 0])) -> Rotation:
         """
         Calculate the quaternion that rotates the camera to look at the center point.
         center_point: 3D position of the object in world frame
@@ -275,7 +283,7 @@ class XArmPlanningClient:
         rotation, rssd = Rotation.align_vectors([direction], [ref_forward], return_sensitivity=False) # type: ignore
 
         # Convert rotation matrix to quaternion
-        quaternion = rotation.as_quat()
+        # quaternion = rotation.as_quat()
         # quaternion = self._align_y_axes_quaternions(quaternion)
 
         # current_y = rotation.apply(initial_y)
@@ -291,7 +299,7 @@ class XArmPlanningClient:
         #     # Apply correction to the rotation
         #     rotation = correction_rotation * rotation
 
-        return quaternion
+        return rotation
     
     def _compute_initial_angle(self, center):
         """
@@ -309,40 +317,28 @@ class XArmPlanningClient:
         """ Normalize a vector """
         return v / np.linalg.norm(v)
         
-    def _align_y_axes_quaternions(self, q1):
-        """
-        Rotates quaternion q1 around the z-axis so that its y-axis is most aligned
-        with the y-axis of quaternion q2 in the x-y plane.
-        """
+    def rotate_to_perpendicular(self, current_pose):
+        # Extract rotation matrix from the current pose (3x3)
+        rotation_matrix = current_pose.as_matrix()
+        
+        # Get the Z-axis of the current end effector
+        z_axis_current = rotation_matrix[:, 2]  # Assuming Z-axis is the third column
 
-        # Convert quaternions to rotation matrices
-        R1 = Rotation.from_quat(q1).as_matrix()
-        R2 = Rotation.from_quat(self._circular_path_initial_orientation).as_matrix()
-
-        # Extract the y-axes from the rotation matrices
-        y_axis_1 = R1[:2, 1]  # x-y components of the y-axis of q1
-        y_axis_2 = R2[:2, 1]  # x-y components of the y-axis of q2
-
-        # Normalize the y-axes
-        y_axis_1 /= np.linalg.norm(y_axis_1)
-        y_axis_2 /= np.linalg.norm(y_axis_2)
-
-        # Compute the angle between the two Y-axes using the dot product
-        dot_product = np.dot(y_axis_1, y_axis_2)
-        angle = np.arccos(np.clip(dot_product, -1.0, 1.0))  # Ensure the value is within valid range
-
-        # Determine the sign of the angle using the cross product
-        cross_product = np.cross(y_axis_1, y_axis_2)
-        if cross_product < 0:
-            angle = -angle  # Adjust the sign of the angle if needed
-
-        # Create a quaternion for the yaw rotation around the z-axis
-        yaw_rotation = Rotation.from_euler('z', angle).as_quat()
-
-        # Apply the yaw rotation to the first quaternion
-        new_q1 = (Rotation.from_quat(q1)*Rotation.from_quat(yaw_rotation)).as_quat()
-
-        return new_q1
+        # Project Z-axis onto XY plane
+        z_axis_xy_projection = np.array([z_axis_current[0], z_axis_current[1], 0])
+        
+        # Calculate the angle between the projection and the X-axis
+        angle_to_rotate = np.arctan2(z_axis_xy_projection[1], z_axis_xy_projection[0])
+        
+        # Create a rotation around the Z-axis to align the end effector
+        z_rotation = Rotation.from_euler('z', -angle_to_rotate).as_matrix()
+        
+        # Apply this rotation to the current rotation matrix
+        new_rotation_matrix = z_rotation @ rotation_matrix
+        
+        # Update the pose with the new rotation matrix
+        
+        return Rotation.from_matrix(new_rotation_matrix)
     
     def _init_camera_link(self):
         '''

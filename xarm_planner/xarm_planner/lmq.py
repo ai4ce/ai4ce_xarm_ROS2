@@ -53,7 +53,7 @@ def main():
 
     waypoints = planning_client.surround_and_lock(
         center=[0.43887, -0.0834, OBJECT_HEIGHT],
-        num_waypoints=8,)
+        num_waypoints=30,)
     
     pose_array = PoseArray()
     pose_array.header.frame_id = "link_base"
