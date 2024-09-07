@@ -215,17 +215,19 @@ class XArmPlanningClient:
         waypoints = []
         for i in range(1, num_waypoints):
             angle = 2 * math.pi * i / num_waypoints
-            pose = self._compute_pose_on_circle(center, angle, i/num_waypoints)
+            pose = self._compute_pose_on_circle(center, angle)
             waypoints.append(pose)
 
         return waypoints
     
-    def _compute_pose_on_circle(self, center, angle, i):
+    def _compute_pose_on_circle(self, center, angle):
         """
         Compute a pose on a circular path at a given angle.
         center: 3D position of the center of the circle (the object)
         angle: Angle around the circle (radians)
-        height: Constant height for the end-effector
+
+        Returns: Pose object.
+        Note that the returned Pose is the pose of the link we are interested in (e.g., camera link), not necessarily the end-effector
         """
         total_angle = self._circular_path_angle_offset + angle
         radius = np.linalg.norm(self._circular_path_initial_position - center)
