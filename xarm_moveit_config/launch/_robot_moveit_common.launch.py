@@ -162,6 +162,12 @@ def launch_setup(context, *args, **kwargs):
     pilz_planning_yaml = load_yaml(moveit_config_package_name, 'config', xarm_type, 'pilz_industrial_motion_planner_planning.yaml')
     pilz_limit_yaml = load_yaml(moveit_config_package_name, 'config', xarm_type, 'pilz_cartesian_limits.yaml')
 
+    servo_yaml = load_yaml('xarm_moveit_servo', "config/xarm_moveit_servo_config.yaml")
+    servo_yaml['move_group_name'] = xarm_type
+    xarm_traj_controller = '{}{}_traj_controller'.format(prefix.perform(context), xarm_type)
+    servo_yaml['command_out_topic'] = '/{}/joint_trajectory'.format(xarm_traj_controller)
+    servo_params = {"moveit_servo": servo_yaml}
+
     if add_gripper.perform(context) in ('True', 'true'):
         gripper_controllers_yaml = load_yaml(moveit_config_package_name, 'config', '{}_gripper'.format(robot_type.perform(context)), '{}.yaml'.format(controllers_name.perform(context)))
         gripper_ompl_planning_yaml = load_yaml(moveit_config_package_name, 'config', '{}_gripper'.format(robot_type.perform(context)), 'ompl_planning.yaml')
@@ -296,6 +302,16 @@ def launch_setup(context, *args, **kwargs):
         ],
     )
 
+    servo_node = Node(
+        package="moveit_servo",
+        executable="servo_node_main",
+        parameters=[
+            servo_params,
+            robot_description_parameters
+        ],
+        output="screen",
+    )
+
     # rviz with moveit configuration
     # rviz_config_file = PathJoinSubstitution([FindPackageShare(moveit_config_package_name), 'config', xarm_type, 'planner.rviz' if no_gui_ctrl.perform(context) == 'true' else 'moveit.rviz'])
     rviz_config_file = PathJoinSubstitution([FindPackageShare(moveit_config_package_name), 'rviz', 'planner.rviz' if no_gui_ctrl.perform(context) == 'true' else 'moveit.rviz'])
@@ -339,6 +355,7 @@ def launch_setup(context, *args, **kwargs):
         rviz2_node,
         static_tf,
         move_group_node,
+        servo_node
     ]
 
 
